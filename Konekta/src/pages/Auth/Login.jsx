@@ -5,7 +5,7 @@ import * as authService from "../../services/authService";
 const Login = () => {
   const navigate = useNavigate();
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [formData, setFormData] = useState({ email: "" });
+  const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -22,7 +22,9 @@ const Login = () => {
     localStorage.setItem("konekta_theme", newMode ? "dark" : "light");
   };
 
-  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validateEmail = (email) => {
+    return email.includes("@") && email.length > 5;
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -35,6 +37,11 @@ const Login = () => {
     if (!formData.email.trim()) newErrors.email = "Email is required";
     else if (!validateEmail(formData.email))
       newErrors.email = "Invalid email format";
+    
+    if (!formData.password.trim()) newErrors.password = "Password is required";
+    else if (formData.password.length < 4)
+      newErrors.password = "Password must be at least 4 characters";
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -48,7 +55,7 @@ const Login = () => {
     setErrors({});
 
     try {
-      const response = await authService.login(formData.email);
+      const response = await authService.login(formData.email, formData.password);
       const userData = response.user || response;
 
       if (!userData) {
@@ -64,15 +71,21 @@ const Login = () => {
       setMessage(`✅ Welcome back, ${userData.firstName}!`);
       setLoginSuccess(true);
 
+      // If password not set (new user with temp password), go to change password
+      // Otherwise go to profile
       setTimeout(() => {
-        navigate(userData.isNewUser === true ? "/onboarding" : "/profile");
+        if (!userData.isPasswordSet) {
+          navigate("/change-password");
+        } else {
+          navigate("/profile");
+        }
       }, 1500);
 
       setLoading(false);
     } catch (err) {
       console.error("Login error:", err);
       setLoading(false);
-      setErrors({ email: "An error occurred. Please try again." });
+      setErrors({ email: err.message || "Invalid email or password" });
     }
   };
 
@@ -99,140 +112,134 @@ const Login = () => {
 
       <button
         onClick={() => navigate("/")}
-        className={`fixed top-6 left-6 z-50 flex items-center gap-2 px-4 py-2 transition group ${
+        className={`fixed top-6 left-6 z-50 px-4 py-2 rounded-lg transition-all ${
           isDarkMode
-            ? "text-gray-300 hover:text-white"
-            : "text-gray-600 hover:text-black"
+            ? "bg-gray-800 hover:bg-gray-700 text-white"
+            : "bg-gray-200 hover:bg-gray-300 text-gray-800"
         }`}
       >
-        <svg
-          className="w-5 h-5 group-hover:-translate-x-1 transition-transform"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 19l-7-7 7-7"
-          />
-        </svg>
-        Back
+        ← Back
       </button>
 
-      <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-20">
-        <div className="w-full max-w-md">
-          <div className="mb-8 text-center">
-            <h1
-              className={`text-3xl md:text-4xl font-bold mb-4 ${
-                isDarkMode
-                  ? "bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400"
-                  : "bg-gradient-to-r from-pink-600 via-purple-600 to-cyan-600"
-              } bg-clip-text text-transparent`}
-            >
-              Welcome Back
-            </h1>
-            <p
-              className={`text-base ${
-                isDarkMode ? "text-gray-300" : "text-gray-600"
-              }`}
-            >
-              Log in to your Konekta account
-            </p>
-          </div>
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <div
+          className={`w-full max-w-md rounded-3xl p-8 shadow-2xl transition-all duration-300 ${
+            isDarkMode
+              ? "bg-gray-900 border-2 border-purple-500 shadow-purple-500/20"
+              : "bg-white border-2 border-blue-400 shadow-blue-400/20"
+          }`}
+        >
+          <h1
+            className={`text-4xl font-bold text-center mb-8 transition-all ${
+              isDarkMode ? "text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500" : "text-blue-600"
+            }`}
+          >
+            Log-In
+          </h1>
 
-          <div className="group relative mb-8">
+          {loginSuccess && (
             <div
-              className={`absolute inset-0 rounded-2xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 ${
-                isDarkMode
-                  ? "bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400"
-                  : "bg-gradient-to-r from-pink-600 via-purple-600 to-cyan-600"
-              }`}
-            />
-
-            <div
-              className={`relative rounded-2xl p-6 backdrop-blur-sm border transition-all duration-300 ${
-                isDarkMode
-                  ? "bg-gray-900 border-purple-500/30"
-                  : "bg-gray-50 border-purple-200"
+              className={`mb-6 p-4 rounded-lg text-center text-lg font-semibold ${
+                isDarkMode ? "bg-green-900/30 text-green-400" : "bg-green-100 text-green-700"
               }`}
             >
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="Email Address"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    disabled={loading || loginSuccess}
-                    className={`w-full px-4 py-3 rounded-lg text-sm transition-all border focus:outline-none focus:ring-2 disabled:opacity-50 ${
-                      errors.email
-                        ? "border-red-500"
-                        : isDarkMode
-                        ? "border-gray-700 focus:border-purple-500 focus:ring-purple-500/20"
-                        : "border-gray-300 focus:border-purple-400 focus:ring-purple-400/20"
-                    } ${
-                      isDarkMode
-                        ? "bg-gray-800 text-white placeholder-gray-500"
-                        : "bg-white text-gray-900 placeholder-gray-400"
-                    }`}
-                  />
-                  {errors.email && (
-                    <p className="text-red-400 text-xs mt-1">{errors.email}</p>
-                  )}
-                </div>
-
-                {message && (
-                  <div
-                    className={`p-3 rounded-lg border text-sm text-center ${
-                      isDarkMode
-                        ? "bg-green-900/30 border-green-600 text-green-400"
-                        : "bg-green-100 border-green-400 text-green-700"
-                    }`}
-                  >
-                    {message}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading || loginSuccess}
-                  className={`w-full py-3 rounded-lg font-semibold text-sm transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed mt-4 ${
-                    isDarkMode
-                      ? "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg shadow-pink-600/30 hover:shadow-pink-600/50"
-                      : "bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50"
-                  }`}
-                >
-                  {loading
-                    ? "Logging in..."
-                    : loginSuccess
-                    ? "Redirecting..."
-                    : "Log In"}
-                </button>
-
-                <p
-                  className={`text-center text-sm mt-6 ${
-                    isDarkMode ? "text-gray-400" : "text-gray-600"
-                  }`}
-                >
-                  Don't have an account?{" "}
-                  <button
-                    type="button"
-                    onClick={() => navigate("/signup")}
-                    className={`font-semibold transition ${
-                      isDarkMode
-                        ? "text-pink-500 hover:text-pink-400"
-                        : "text-pink-600 hover:text-pink-500"
-                    }`}
-                    disabled={loading}
-                  >
-                    Sign Up
-                  </button>
-                </p>
-              </form>
+              {message}
             </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email Input */}
+            <div>
+              <label
+                className={`block text-sm font-semibold mb-2 ${
+                  isDarkMode ? "text-pink-400" : "text-blue-600"
+                }`}
+              >
+                Email address
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="you@example.com"
+                className={`w-full px-4 py-3 rounded-full transition-all focus:outline-none focus:ring-2 ${
+                  isDarkMode
+                    ? `bg-gray-800 border-2 ${
+                        errors.email ? "border-red-500" : "border-pink-500"
+                      } text-white placeholder-gray-500 focus:border-pink-400 focus:ring-pink-500/30`
+                    : `bg-gray-100 border-2 ${
+                        errors.email ? "border-red-500" : "border-blue-400"
+                      } text-gray-800 placeholder-gray-500 focus:border-blue-400 focus:ring-blue-400/30`
+                }`}
+              />
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+              )}
+            </div>
+
+            {/* Password Input */}
+            <div>
+              <label
+                className={`block text-sm font-semibold mb-2 ${
+                  isDarkMode ? "text-pink-400" : "text-blue-600"
+                }`}
+              >
+                Password
+              </label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="••••••••"
+                className={`w-full px-4 py-3 rounded-full transition-all focus:outline-none focus:ring-2 ${
+                  isDarkMode
+                    ? `bg-gray-800 border-2 ${
+                        errors.password ? "border-red-500" : "border-pink-500"
+                      } text-white placeholder-gray-500 focus:border-pink-400 focus:ring-pink-500/30`
+                    : `bg-gray-100 border-2 ${
+                        errors.password ? "border-red-500" : "border-blue-400"
+                      } text-gray-800 placeholder-gray-500 focus:border-blue-400 focus:ring-blue-400/30`
+                }`}
+              />
+              {errors.password && (
+                <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+              )}
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full py-3 rounded-full font-bold text-white transition-all transform ${
+                isDarkMode
+                  ? "bg-gradient-to-r from-pink-500 to-purple-500 hover:shadow-lg hover:shadow-pink-500/50 disabled:opacity-50"
+                  : "bg-gradient-to-r from-blue-500 to-cyan-500 hover:shadow-lg hover:shadow-blue-500/50 disabled:opacity-50"
+              } ${loading ? "cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}
+            >
+              {loading ? "Logging in..." : "Log-In"}
+            </button>
+          </form>
+
+          <div className="text-center mt-6">
+            <p
+              className={`text-sm ${
+                isDarkMode ? "text-gray-400" : "text-gray-600"
+              }`}
+            >
+              Don't have an account?{" "}
+              <button
+                onClick={() => navigate("/signup")}
+                className={`font-bold transition-colors ${
+                  isDarkMode
+                    ? "text-pink-400 hover:text-pink-300"
+                    : "text-blue-600 hover:text-blue-700"
+                }`}
+              >
+                Sign Up
+              </button>
+            </p>
           </div>
         </div>
       </div>

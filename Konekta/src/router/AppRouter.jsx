@@ -10,7 +10,8 @@ import {
 // Importing your pages
 import Landing from "../pages/Landing/Landing";
 import Login from "../pages/Auth/Login";
-import SignIn from "../pages/Auth/SignIn";
+import SignUp from "../pages/Auth/SignUp";
+import ChangePassword from "../pages/Auth/ChangePassword";
 import Onboarding from "../pages/Auth/Onboarding";
 import ProfileSetup from "../pages/ProfileSetup/ProfileSetup";
 import Profile from "../pages/Profile/Profile";
@@ -25,7 +26,8 @@ const AppRouter = () => {
 
         {/* Authentication Pages */}
         <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<SignIn />} />
+        <Route path="/signup" element={<SignUp />} />
+        <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/profile-setup" element={<ProfileSetup />} />
         <Route path="/auth/google/callback" element={<GoogleCallback />} />

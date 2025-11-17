@@ -19,18 +19,34 @@ const Profile = () => {
 
   // Load profile and posts on mount
   useEffect(() => {
-    const savedProfile = localStorage.getItem("konekta_user_profile");
-    if (savedProfile) {
-      const profileData = JSON.parse(savedProfile);
-      setProfile(profileData);
-      setEditFormData(profileData);
+    // Get current logged-in user
+    const currentUser = JSON.parse(localStorage.getItem("konekta_user"));
+    
+    if (!currentUser || !currentUser.email) {
+      navigate("/login");
+      return;
     }
 
-    const savedPosts = localStorage.getItem("konekta_user_posts");
+    // Use current user data for profile
+    const profileData = {
+      email: currentUser.email,
+      username: currentUser.username,
+      fullName: currentUser.fullName || `${currentUser.firstName} ${currentUser.lastName}`,
+      bio: currentUser.bio,
+      profileImage: currentUser.profilePic,
+      interests: currentUser.interests || [],
+    };
+
+    setProfile(profileData);
+    setEditFormData(profileData);
+
+    // Load posts for this user (keyed by email)
+    const postsKey = `konekta_posts_${currentUser.email}`;
+    const savedPosts = localStorage.getItem(postsKey);
     if (savedPosts) {
       setPosts(JSON.parse(savedPosts));
     }
-  }, []);
+  }, [navigate]);
 
   // Check if username exists (excluding current username)
   const isUsernameExists = (username) => {
@@ -76,6 +92,8 @@ const Profile = () => {
 
     setLoading(true);
 
+    const currentUser = JSON.parse(localStorage.getItem("konekta_user"));
+
     const updatedProfile = {
       ...profile,
       username: editFormData.username?.trim(),
@@ -84,10 +102,23 @@ const Profile = () => {
       profileImage: editFormData.profileImage || profile.profileImage,
     };
 
+    // Update the current user in localStorage
+    const updatedUser = {
+      ...currentUser,
+      username: editFormData.username?.trim(),
+      fullName: editFormData.fullName?.trim(),
+      bio: editFormData.bio?.trim(),
+      profilePic: editFormData.profileImage || profile.profileImage,
+    };
+    
+    localStorage.setItem("konekta_user", JSON.stringify(updatedUser));
+    
+    // Also save profile with email-based key for isolation
     localStorage.setItem(
-      "konekta_user_profile",
+      `konekta_user_profile_${currentUser.email}`,
       JSON.stringify(updatedProfile)
     );
+    
     setProfile(updatedProfile);
     setShowEditModal(false);
     setLoading(false);
@@ -114,6 +145,8 @@ const Profile = () => {
 
     setLoading(true);
 
+    const currentUser = JSON.parse(localStorage.getItem("konekta_user"));
+
     const newPost = {
       id: Date.now(),
       image: postImage,
@@ -121,7 +154,10 @@ const Profile = () => {
     };
 
     const updatedPosts = [newPost, ...posts];
-    localStorage.setItem("konekta_user_posts", JSON.stringify(updatedPosts));
+    
+    // Use email-based key for posts isolation
+    const postsKey = `konekta_posts_${currentUser.email}`;
+    localStorage.setItem(postsKey, JSON.stringify(updatedPosts));
     setPosts(updatedPosts);
 
     setPostImage(null);
@@ -132,8 +168,13 @@ const Profile = () => {
 
   // Delete post
   const handleDeletePost = (postId) => {
+    const currentUser = JSON.parse(localStorage.getItem("konekta_user"));
+    
     const updatedPosts = posts.filter((p) => p.id !== postId);
-    localStorage.setItem("konekta_user_posts", JSON.stringify(updatedPosts));
+    
+    // Use email-based key for posts isolation
+    const postsKey = `konekta_posts_${currentUser.email}`;
+    localStorage.setItem(postsKey, JSON.stringify(updatedPosts));
     setPosts(updatedPosts);
   };
 

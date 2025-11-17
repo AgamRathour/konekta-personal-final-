@@ -6,6 +6,7 @@ const router = express.Router();
 // Email Authentication - Simple Flow
 router.post("/signup", authController.signup);
 router.post("/login", authController.login);
+router.post("/set-password", authController.setPassword);
 
 // User Routes
 router.get("/users/:email", authController.getUserByEmail);

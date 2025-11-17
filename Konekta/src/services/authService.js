@@ -2,16 +2,16 @@ const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 /**
- * Sign up a new user with email
- * @param {Object} userData - { firstName, lastName, email }
- * @returns {Promise}
+ * Sign up a new user
+ * @param {Object} userData - { firstName, lastName, email, phone, dateOfBirth }
+ * @returns {Promise} - Returns temporary password
  */
-export const signUp = async (firstName, lastName, email) => {
+export const signUp = async (firstName, lastName, email, phone, dateOfBirth) => {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ firstName, lastName, email }),
+      body: JSON.stringify({ firstName, lastName, email, phone, dateOfBirth }),
     });
 
     const data = await response.json();
@@ -31,16 +31,17 @@ export const signUp = async (firstName, lastName, email) => {
 };
 
 /**
- * Login with email only
+ * Login with email and password
  * @param {string} email - User email
+ * @param {string} password - User password (temp or permanent)
  * @returns {Promise}
  */
-export const login = async (email) => {
+export const login = async (email, password) => {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, password }),
     });
 
     const data = await response.json();
@@ -56,6 +57,32 @@ export const login = async (email) => {
     return data;
   } catch (error) {
     throw new Error(error.message || "An error occurred during login");
+  }
+};
+
+/**
+ * Set permanent password
+ * @param {string} email - User email
+ * @param {string} password - New password
+ * @returns {Promise}
+ */
+export const setPassword = async (email, password) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/set-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to set password");
+    }
+
+    return data;
+  } catch (error) {
+    throw new Error(error.message || "An error occurred");
   }
 };
 

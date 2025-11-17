@@ -13,6 +13,8 @@ const Onboarding = () => {
     username: "",
     bio: "",
     frequency: "regular",
+    password: "",
+    confirmPassword: "",
   });
 
   const interests = [
@@ -73,11 +75,12 @@ const Onboarding = () => {
 
   const handleContinue = async () => {
     if (selectedInterests.length === 0 && currentStep === 1) return;
-    if (currentStep < 3) {
+    if (currentStep < 2) {
       handleNext();
       return;
     }
 
+    // On final step, save everything
     setLoading(true);
 
     try {
@@ -88,16 +91,19 @@ const Onboarding = () => {
         throw new Error("User not found. Please log in again.");
       }
 
-      // Call backend to update interests
+      // Call backend to update interests and mark as onboarded
       await authService.updateUser(currentUser.email, {
         interests: selectedInterests,
+        isNewUser: false,
       });
 
       // Update localStorage
       const userProfile = {
         ...currentUser,
         interests: selectedInterests,
-        ...userData,
+        username: userData.username,
+        bio: userData.bio,
+        isNewUser: false,
         onboarded: true,
       };
 
@@ -108,12 +114,11 @@ const Onboarding = () => {
       );
 
       setLoading(false);
-      navigate("/profile-setup");
+      navigate("/profile");
     } catch (error) {
       console.error("Onboarding error:", error);
       setLoading(false);
-      // Still navigate even if backend fails (use localStorage as fallback)
-      navigate("/profile-setup");
+      alert("Error completing onboarding: " + error.message);
     }
   };
 
@@ -127,8 +132,6 @@ const Onboarding = () => {
         return "What are you interested in?";
       case 2:
         return "Tell us about yourself";
-      case 3:
-        return "How will you use Konekta?";
       default:
         return "Welcome to Konekta!";
     }
@@ -140,8 +143,6 @@ const Onboarding = () => {
         return "Choose topics that interest you most.";
       case 2:
         return "Help others get to know you better.";
-      case 3:
-        return "We'll customize your experience accordingly.";
       default:
         return "Tell us what you like.";
     }
@@ -292,40 +293,6 @@ const Onboarding = () => {
           </div>
         )}
 
-        {/* STEP 3: Usage Frequency */}
-        {currentStep === 3 && (
-          <div className="w-full max-w-md space-y-4 mb-8 animate-slide-up">
-            {frequencyOptions.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => handleInputChange("frequency", option.value)}
-                className={`w-full p-4 rounded-xl text-left transition-all duration-300 transform hover:scale-102 ${
-                  userData.frequency === option.value
-                    ? "bg-gradient-to-r from-pink-500 to-cyan-400 text-black shadow-lg scale-102"
-                    : isDarkMode
-                    ? "bg-gray-900 border border-gray-700 hover:border-purple-500"
-                    : "bg-white border border-gray-200 hover:border-purple-400"
-                }`}
-              >
-                <div className="font-semibold">{option.label}</div>
-                <div
-                  className={`text-sm mt-1 ${
-                    userData.frequency === option.value
-                      ? "text-gray-800"
-                      : isDarkMode
-                      ? "text-gray-400"
-                      : "text-gray-600"
-                  }`}
-                >
-                  {option.value === "casual" && "Check in occasionally"}
-                  {option.value === "regular" && "Use a few times per week"}
-                  {option.value === "active" && "Very active - daily user"}
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-
         {/* GUIDE TEXT */}
         <p
           className={`text-sm mb-6 animate-fade-in ${
@@ -339,7 +306,6 @@ const Onboarding = () => {
                   selectedInterests.length !== 1 ? "s" : ""
                 } selected`)}
           {currentStep === 2 && "Complete your profile information"}
-          {currentStep === 3 && "Choose how you plan to use Konekta"}
         </p>
 
         {/* BUTTONS */}
@@ -355,11 +321,7 @@ const Onboarding = () => {
                 : "bg-gradient-to-r from-pink-500 to-cyan-400 text-black hover:scale-105 hover:shadow-lg transform"
             }`}
           >
-            {loading
-              ? "Saving..."
-              : currentStep === 3
-              ? "Get Started"
-              : "Continue"}
+            {loading ? "Saving..." : currentStep === 2 ? "Complete Setup" : "Continue"}
           </button>
 
           <button
