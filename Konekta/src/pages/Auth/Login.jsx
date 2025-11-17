@@ -1,17 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import * as authService from "../../services/authService";
 
 const Login = () => {
   const navigate = useNavigate();
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
-
+  const [formData, setFormData] = useState({ email: "" });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [loginSuccess, setLoginSuccess] = useState(false);
 
@@ -26,107 +22,58 @@ const Login = () => {
     localStorage.setItem("konekta_theme", newMode ? "dark" : "light");
   };
 
-  const validateEmail = (email) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  };
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
-    }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const validateForm = () => {
     const newErrors = {};
-
     if (!formData.email.trim()) newErrors.email = "Email is required";
     else if (!validateEmail(formData.email))
       newErrors.email = "Invalid email format";
-    if (!formData.password) newErrors.password = "Password is required";
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setLoading(true);
     setMessage("");
     setErrors({});
 
-    // Simulate login delay
-    setTimeout(() => {
-      const usersData = localStorage.getItem("konekta_users");
+    try {
+      const response = await authService.login(formData.email);
+      const userData = response.user || response;
 
-      if (!usersData) {
-        // No users exist
+      if (!userData) {
         setLoading(false);
         setErrors({ email: "Account not found. Please sign up first." });
         return;
       }
 
-      try {
-        const users = JSON.parse(usersData);
+      localStorage.setItem("konekta_isLoggedIn", "true");
+      localStorage.setItem("konekta_user", JSON.stringify(userData));
+      localStorage.setItem("konekta_currentUser", JSON.stringify(userData));
 
-        // Check if email exists in users array
-        const foundUser = users.find((user) => user.email === formData.email);
+      setMessage(`✅ Welcome back, ${userData.firstName}!`);
+      setLoginSuccess(true);
 
-        if (!foundUser) {
-          setLoading(false);
-          setErrors({ email: "Account not found. Please sign up first." });
-          return;
-        }
+      setTimeout(() => {
+        navigate(userData.isNewUser === true ? "/onboarding" : "/profile");
+      }, 1500);
 
-        // Simulate password verification (for demo, any password works)
-        if (!formData.password) {
-          setLoading(false);
-          setErrors({ password: "Password is required" });
-          return;
-        }
-
-        // Success!
-        localStorage.setItem("konekta_isLoggedIn", "true");
-        localStorage.setItem("konekta_currentUser", JSON.stringify(foundUser));
-        localStorage.setItem("konekta_user", JSON.stringify(foundUser));
-
-        setMessage(`✅ Welcome back, ${foundUser.firstName}!`);
-        setLoginSuccess(true);
-        setErrors({});
-
-        // Auto-redirect after 1.5 seconds
-        setTimeout(() => {
-          // Check if user has profile setup completed
-          const hasProfile = localStorage.getItem("konekta_user_profile");
-
-          if (hasProfile) {
-            // Existing user with profile - go straight to profile
-            navigate("/profile");
-          } else {
-            // New user - go to onboarding
-            navigate("/onboarding");
-          }
-        }, 1500);
-
-        setLoading(false);
-      } catch (err) {
-        console.error("Login error:", err);
-        setLoading(false);
-        setErrors({ email: "An error occurred. Please try again." });
-      }
-    }, 1000);
+      setLoading(false);
+    } catch (err) {
+      console.error("Login error:", err);
+      setLoading(false);
+      setErrors({ email: "An error occurred. Please try again." });
+    }
   };
 
   return (
@@ -135,7 +82,6 @@ const Login = () => {
         isDarkMode ? "bg-black text-white" : "bg-gray-100 text-gray-800"
       }`}
     >
-      {/* Theme Toggle */}
       <button
         onClick={toggleTheme}
         className={`fixed top-6 right-6 z-50 p-3 rounded-full transition-all duration-300 transform hover:scale-110 ${
@@ -145,17 +91,12 @@ const Login = () => {
         }`}
       >
         {isDarkMode ? (
-          <div className="flex items-center justify-center w-6 h-6">
-            <span className="text-lg">☀️</span>
-          </div>
+          <span className="text-lg">☀️</span>
         ) : (
-          <div className="flex items-center justify-center w-6 h-6">
-            <span className="text-lg">🌙</span>
-          </div>
+          <span className="text-lg">🌙</span>
         )}
       </button>
 
-      {/* Back Button */}
       <button
         onClick={() => navigate("/")}
         className={`fixed top-6 left-6 z-50 flex items-center gap-2 px-4 py-2 transition group ${
@@ -182,7 +123,6 @@ const Login = () => {
 
       <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-20">
         <div className="w-full max-w-md">
-          {/* Header */}
           <div className="mb-8 text-center">
             <h1
               className={`text-3xl md:text-4xl font-bold mb-4 ${
@@ -202,9 +142,7 @@ const Login = () => {
             </p>
           </div>
 
-          {/* Form Container */}
           <div className="group relative mb-8">
-            {/* Gradient Border Glow */}
             <div
               className={`absolute inset-0 rounded-2xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 ${
                 isDarkMode
@@ -213,7 +151,6 @@ const Login = () => {
               }`}
             />
 
-            {/* Card */}
             <div
               className={`relative rounded-2xl p-6 backdrop-blur-sm border transition-all duration-300 ${
                 isDarkMode
@@ -221,9 +158,7 @@ const Login = () => {
                   : "bg-gray-50 border-purple-200"
               }`}
             >
-              {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Email */}
                 <div>
                   <input
                     type="email"
@@ -232,74 +167,23 @@ const Login = () => {
                     value={formData.email}
                     onChange={handleInputChange}
                     disabled={loading || loginSuccess}
-                    className={`w-full px-4 py-3 rounded-lg text-sm transition-all ${
+                    className={`w-full px-4 py-3 rounded-lg text-sm transition-all border focus:outline-none focus:ring-2 disabled:opacity-50 ${
                       errors.email
                         ? "border-red-500"
                         : isDarkMode
-                        ? "border-gray-700 focus:border-purple-500"
-                        : "border-gray-300 focus:border-purple-400"
+                        ? "border-gray-700 focus:border-purple-500 focus:ring-purple-500/20"
+                        : "border-gray-300 focus:border-purple-400 focus:ring-purple-400/20"
                     } ${
                       isDarkMode
                         ? "bg-gray-800 text-white placeholder-gray-500"
                         : "bg-white text-gray-900 placeholder-gray-400"
-                    } border focus:outline-none focus:ring-2 ${
-                      isDarkMode
-                        ? "focus:ring-purple-500/20"
-                        : "focus:ring-purple-400/20"
-                    } disabled:opacity-50`}
+                    }`}
                   />
                   {errors.email && (
                     <p className="text-red-400 text-xs mt-1">{errors.email}</p>
                   )}
                 </div>
 
-                {/* Password */}
-                <div>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      placeholder="Password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      disabled={loading || loginSuccess}
-                      className={`w-full px-4 py-3 rounded-lg text-sm transition-all ${
-                        errors.password
-                          ? "border-red-500"
-                          : isDarkMode
-                          ? "border-gray-700 focus:border-purple-500"
-                          : "border-gray-300 focus:border-purple-400"
-                      } ${
-                        isDarkMode
-                          ? "bg-gray-800 text-white placeholder-gray-500"
-                          : "bg-white text-gray-900 placeholder-gray-400"
-                      } border focus:outline-none focus:ring-2 ${
-                        isDarkMode
-                          ? "focus:ring-purple-500/20"
-                          : "focus:ring-purple-400/20"
-                      } disabled:opacity-50 pr-12`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className={`absolute right-3 top-3 transition ${
-                        isDarkMode
-                          ? "text-gray-400 hover:text-gray-200"
-                          : "text-gray-500 hover:text-gray-700"
-                      }`}
-                      disabled={loading || loginSuccess}
-                    >
-                      {showPassword ? "👁️" : "👁️‍🗨️"}
-                    </button>
-                  </div>
-                  {errors.password && (
-                    <p className="text-red-400 text-xs mt-1">
-                      {errors.password}
-                    </p>
-                  )}
-                </div>
-
-                {/* Success Message */}
                 {message && (
                   <div
                     className={`p-3 rounded-lg border text-sm text-center ${
@@ -312,7 +196,6 @@ const Login = () => {
                   </div>
                 )}
 
-                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={loading || loginSuccess}
@@ -329,7 +212,6 @@ const Login = () => {
                     : "Log In"}
                 </button>
 
-                {/* Don't have account */}
                 <p
                   className={`text-center text-sm mt-6 ${
                     isDarkMode ? "text-gray-400" : "text-gray-600"

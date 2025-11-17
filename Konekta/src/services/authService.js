@@ -3,15 +3,15 @@ const API_BASE_URL =
 
 /**
  * Sign up a new user with email
- * @param {Object} userData - { firstName, lastName, email, password, phone, dateOfBirth }
- * @returns {Promise} - { success, user, token, message }
+ * @param {Object} userData - { firstName, lastName, email }
+ * @returns {Promise}
  */
-export const signIn = async (userData) => {
+export const signUp = async (firstName, lastName, email) => {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(userData),
+      body: JSON.stringify({ firstName, lastName, email }),
     });
 
     const data = await response.json();
@@ -20,111 +20,24 @@ export const signIn = async (userData) => {
       throw new Error(data.message || "Signup failed");
     }
 
-    // Store token
-    if (data.token) {
-      localStorage.setItem("token", data.token);
-    }
+    // Store user data
+    localStorage.setItem("konekta_user", JSON.stringify(data.user));
+    localStorage.setItem("konekta_isLoggedIn", "true");
 
     return data;
   } catch (error) {
-    return {
-      success: false,
-      message: error.message || "An error occurred during signup",
-    };
+    throw new Error(error.message || "An error occurred during signup");
   }
 };
 
 /**
- * Login with email and password
+ * Login with email only
  * @param {string} email - User email
- * @param {string} password - User password
- * @returns {Promise} - { success, user, token, message }
+ * @returns {Promise}
  */
-export const login = async (email, password) => {
+export const login = async (email) => {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || "Login failed");
-    }
-
-    // Store token
-    if (data.token) {
-      localStorage.setItem("token", data.token);
-    }
-
-    return data;
-  } catch (error) {
-    return {
-      success: false,
-      message: error.message || "An error occurred during login",
-    };
-  }
-};
-
-/**
- * Google OAuth authentication
- * @returns {Promise} - { success, user, token, isNewUser, message }
- */
-export const googleAuth = async () => {
-  try {
-    // Redirect to backend Google OAuth endpoint
-    window.location.href = `${API_BASE_URL}/auth/google`;
-  } catch (error) {
-    return {
-      success: false,
-      message: error.message || "Google authentication failed",
-    };
-  }
-};
-
-/**
- * Handle Google OAuth callback
- * @param {string} code - Authorization code from Google
- * @returns {Promise} - { success, user, token, isNewUser, message }
- */
-export const handleGoogleCallback = async (code) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/google/callback`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || "Google authentication failed");
-    }
-
-    // Store token
-    if (data.token) {
-      localStorage.setItem("token", data.token);
-    }
-
-    return data;
-  } catch (error) {
-    return {
-      success: false,
-      message: error.message || "Google authentication failed",
-    };
-  }
-};
-
-/**
- * Send OTP to email
- * @param {string} email - User email
- * @returns {Promise} - { success, message }
- */
-export const sendOTP = async (email) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
@@ -133,110 +46,66 @@ export const sendOTP = async (email) => {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || "Failed to send OTP");
+      throw new Error(data.message || "Login failed");
     }
+
+    // Store user data
+    localStorage.setItem("konekta_user", JSON.stringify(data.user));
+    localStorage.setItem("konekta_isLoggedIn", "true");
 
     return data;
   } catch (error) {
-    return {
-      success: false,
-      message: error.message || "Failed to send OTP",
-    };
+    throw new Error(error.message || "An error occurred during login");
   }
 };
 
 /**
- * Verify OTP
+ * Get user by email
  * @param {string} email - User email
- * @param {string} otp - OTP code
- * @returns {Promise} - { success, user, token, message }
+ * @returns {Promise}
  */
-export const verifyOTP = async (email, otp) => {
+export const getUserByEmail = async (email) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, otp }),
-    });
+    const response = await fetch(`${API_BASE_URL}/auth/users/${email}`);
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || "OTP verification failed");
-    }
-
-    // Store token
-    if (data.token) {
-      localStorage.setItem("token", data.token);
+      throw new Error(data.message || "User not found");
     }
 
     return data;
   } catch (error) {
-    return {
-      success: false,
-      message: error.message || "OTP verification failed",
-    };
+    throw new Error(error.message || "Failed to fetch user");
   }
 };
 
 /**
- * Verify email with token
- * @param {string} token - Verification token
- * @returns {Promise} - { success, message }
+ * Update user profile
+ * @param {string} email - User email
+ * @param {Object} updates - { username, fullName, bio, profilePic, interests, isNewUser }
+ * @returns {Promise}
  */
-export const verifyEmail = async (token) => {
+export const updateUser = async (email, updates) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/verify-email`, {
-      method: "POST",
+    const response = await fetch(`${API_BASE_URL}/auth/users/${email}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify(updates),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || "Email verification failed");
+      throw new Error(data.message || "Update failed");
     }
+
+    // Update user data in localStorage
+    localStorage.setItem("konekta_user", JSON.stringify(data.user));
 
     return data;
   } catch (error) {
-    return {
-      success: false,
-      message: error.message || "Email verification failed",
-    };
-  }
-};
-
-/**
- * Get current user
- * @returns {Promise} - { success, user }
- */
-export const getCurrentUser = async () => {
-  try {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      return { success: false, message: "Not authenticated" };
-    }
-
-    const response = await fetch(`${API_BASE_URL}/auth/me`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to fetch user");
-    }
-
-    return data;
-  } catch (error) {
-    return {
-      success: false,
-      message: error.message || "Failed to fetch user",
-    };
+    throw new Error(error.message || "Failed to update user");
   }
 };
 
@@ -244,6 +113,6 @@ export const getCurrentUser = async () => {
  * Logout user
  */
 export const logout = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
+  localStorage.removeItem("konekta_user");
+  localStorage.removeItem("konekta_isLoggedIn");
 };

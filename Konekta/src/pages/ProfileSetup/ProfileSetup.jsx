@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
+import * as authService from "../../services/authService";
 
 const ProfileSetup = () => {
   const navigate = useNavigate();
@@ -56,63 +57,113 @@ const ProfileSetup = () => {
   };
 
   // Handle continue
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!validateFields()) return;
 
     setLoading(true);
 
-    // Save profile to localStorage
-    const currentUser = JSON.parse(localStorage.getItem("konekta_user"));
-    const userProfile = {
-      username: username.trim(),
-      fullName: fullName.trim(),
-      bio: bio.trim(),
-      profileImage: profileImage || null,
-      completedAt: new Date().toISOString(),
-    };
+    try {
+      // Get current user from localStorage
+      const currentUser = JSON.parse(localStorage.getItem("konekta_user"));
 
-    localStorage.setItem("konekta_user_profile", JSON.stringify(userProfile));
+      if (!currentUser || !currentUser.email) {
+        throw new Error("User not found. Please log in again.");
+      }
 
-    // Update user with username in konekta_users array
-    const users = JSON.parse(localStorage.getItem("konekta_users") || "[]");
-    const updatedUsers = users.map((user) =>
-      user.email === currentUser.email
-        ? { ...user, username: username.trim() }
-        : user
-    );
-    localStorage.setItem("konekta_users", JSON.stringify(updatedUsers));
+      // Call backend to update profile and mark as not new user
+      await authService.updateUser(currentUser.email, {
+        username: username.trim(),
+        fullName: fullName.trim(),
+        bio: bio.trim(),
+        profilePic: profileImage || null,
+        isNewUser: false, // Mark as existing user now that setup is complete
+      });
 
-    // Set profile setup flag
-    localStorage.setItem("konekta_profile_setup_done", "true");
+      // Save profile to localStorage
+      const userProfile = {
+        username: username.trim(),
+        fullName: fullName.trim(),
+        bio: bio.trim(),
+        profileImage: profileImage || null,
+        completedAt: new Date().toISOString(),
+      };
 
-    setTimeout(() => {
+      // Update localStorage with complete user data
+      const updatedUser = {
+        ...currentUser,
+        username: username.trim(),
+        fullName: fullName.trim(),
+        bio: bio.trim(),
+        profilePic: profileImage || null,
+        isNewUser: false,
+      };
+
+      localStorage.setItem("konekta_user", JSON.stringify(updatedUser));
+      localStorage.setItem("konekta_user_profile", JSON.stringify(userProfile));
+      localStorage.setItem("konekta_profile_setup_done", "true");
+
       setLoading(false);
       navigate("/profile");
-    }, 800);
+    } catch (error) {
+      console.error("Profile setup error:", error);
+      setLoading(false);
+      // Still navigate even if backend fails (use localStorage as fallback)
+      navigate("/profile");
+    }
   };
 
   // Handle skip
-  const handleSkip = () => {
+  const handleSkip = async () => {
     setLoading(true);
 
-    const defaultProfile = {
-      username: `user_${Date.now()}`,
-      fullName: "User",
-      bio: "",
-      profileImage: null,
-      completedAt: new Date().toISOString(),
-    };
+    try {
+      const currentUser = JSON.parse(localStorage.getItem("konekta_user"));
 
-    localStorage.setItem(
-      "konekta_user_profile",
-      JSON.stringify(defaultProfile)
-    );
-    localStorage.setItem("konekta_profile_setup_done", "true");
+      if (!currentUser || !currentUser.email) {
+        throw new Error("User not found. Please log in again.");
+      }
 
-    setTimeout(() => {
+      const defaultUsername = `user_${Date.now()}`;
+
+      // Call backend to update with default profile and mark as not new user
+      await authService.updateUser(currentUser.email, {
+        username: defaultUsername,
+        fullName: currentUser.firstName || "User",
+        bio: "",
+        isNewUser: false,
+      });
+
+      const defaultProfile = {
+        username: defaultUsername,
+        fullName: currentUser.firstName || "User",
+        bio: "",
+        profileImage: null,
+        completedAt: new Date().toISOString(),
+      };
+
+      // Update localStorage
+      const updatedUser = {
+        ...currentUser,
+        username: defaultUsername,
+        fullName: currentUser.firstName || "User",
+        bio: "",
+        isNewUser: false,
+      };
+
+      localStorage.setItem("konekta_user", JSON.stringify(updatedUser));
+      localStorage.setItem(
+        "konekta_user_profile",
+        JSON.stringify(defaultProfile)
+      );
+      localStorage.setItem("konekta_profile_setup_done", "true");
+
       setLoading(false);
       navigate("/profile");
-    }, 800);
+    } catch (error) {
+      console.error("Skip profile setup error:", error);
+      setLoading(false);
+      navigate("/profile");
+    }
   };
 
   const isFormValid = username.trim() && fullName.trim() && !errors.username;

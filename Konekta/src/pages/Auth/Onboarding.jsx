@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
+import * as authService from "../../services/authService";
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -70,7 +71,7 @@ const Onboarding = () => {
     }
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (selectedInterests.length === 0 && currentStep === 1) return;
     if (currentStep < 3) {
       handleNext();
@@ -79,22 +80,41 @@ const Onboarding = () => {
 
     setLoading(true);
 
-    const userProfile = {
-      interests: selectedInterests,
-      ...userData,
-      onboarded: true,
-    };
+    try {
+      // Get current user from localStorage
+      const currentUser = JSON.parse(localStorage.getItem("konekta_user"));
 
-    localStorage.setItem("konekta_user", JSON.stringify(userProfile));
-    localStorage.setItem(
-      "konekta_interests",
-      JSON.stringify(selectedInterests)
-    );
+      if (!currentUser || !currentUser.email) {
+        throw new Error("User not found. Please log in again.");
+      }
 
-    setTimeout(() => {
+      // Call backend to update interests
+      await authService.updateUser(currentUser.email, {
+        interests: selectedInterests,
+      });
+
+      // Update localStorage
+      const userProfile = {
+        ...currentUser,
+        interests: selectedInterests,
+        ...userData,
+        onboarded: true,
+      };
+
+      localStorage.setItem("konekta_user", JSON.stringify(userProfile));
+      localStorage.setItem(
+        "konekta_interests",
+        JSON.stringify(selectedInterests)
+      );
+
       setLoading(false);
       navigate("/profile-setup");
-    }, 800);
+    } catch (error) {
+      console.error("Onboarding error:", error);
+      setLoading(false);
+      // Still navigate even if backend fails (use localStorage as fallback)
+      navigate("/profile-setup");
+    }
   };
 
   const handleSkip = () => {
