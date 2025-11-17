@@ -11,20 +11,36 @@ const Onboarding = () => {
   const [userData, setUserData] = useState({
     username: "",
     bio: "",
-    frequency: "regular"
+    frequency: "regular",
   });
 
   const interests = [
-    "Music", "Sports", "Coding", "Gaming", "Movies", "Fitness",
-    "Photography", "Art", "Travel", "Reading", "Dance", "Fashion",
-    "Tech", "Anime", "Nature", "Cooking", "Design", "Business",
-    "Science", "Memes",
+    "Music",
+    "Sports",
+    "Coding",
+    "Gaming",
+    "Movies",
+    "Fitness",
+    "Photography",
+    "Art",
+    "Travel",
+    "Reading",
+    "Dance",
+    "Fashion",
+    "Tech",
+    "Anime",
+    "Nature",
+    "Cooking",
+    "Design",
+    "Business",
+    "Science",
+    "Memes",
   ];
 
   const frequencyOptions = [
     { value: "casual", label: "Casual User" },
     { value: "regular", label: "Regular User" },
-    { value: "active", label: "Very Active" }
+    { value: "active", label: "Very Active" },
   ];
 
   const toggleInterest = (interest) => {
@@ -36,21 +52,21 @@ const Onboarding = () => {
   };
 
   const handleInputChange = (field, value) => {
-    setUserData(prev => ({
+    setUserData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   const handleNext = () => {
     if (currentStep < 3) {
-      setCurrentStep(prev => prev + 1);
+      setCurrentStep((prev) => prev + 1);
     }
   };
 
   const handleBack = () => {
     if (currentStep > 1) {
-      setCurrentStep(prev => prev - 1);
+      setCurrentStep((prev) => prev - 1);
     }
   };
 
@@ -62,41 +78,52 @@ const Onboarding = () => {
     }
 
     setLoading(true);
-    
+
     const userProfile = {
       interests: selectedInterests,
       ...userData,
-      onboarded: true
+      onboarded: true,
     };
 
     localStorage.setItem("konekta_user", JSON.stringify(userProfile));
-    localStorage.setItem("konekta_interests", JSON.stringify(selectedInterests));
+    localStorage.setItem(
+      "konekta_interests",
+      JSON.stringify(selectedInterests)
+    );
 
     setTimeout(() => {
       setLoading(false);
-      navigate("/home");
+      navigate("/profile-setup");
     }, 800);
   };
 
   const handleSkip = () => {
-    navigate("/home");
+    navigate("/profile-setup");
   };
 
   const getStepTitle = () => {
     switch (currentStep) {
-      case 1: return "What are you interested in?";
-      case 2: return "Tell us about yourself";
-      case 3: return "How will you use Konekta?";
-      default: return "Welcome to Konekta!";
+      case 1:
+        return "What are you interested in?";
+      case 2:
+        return "Tell us about yourself";
+      case 3:
+        return "How will you use Konekta?";
+      default:
+        return "Welcome to Konekta!";
     }
   };
 
   const getStepDescription = () => {
     switch (currentStep) {
-      case 1: return "Choose topics that interest you most.";
-      case 2: return "Help others get to know you better.";
-      case 3: return "We'll customize your experience accordingly.";
-      default: return "Tell us what you like.";
+      case 1:
+        return "Choose topics that interest you most.";
+      case 2:
+        return "Help others get to know you better.";
+      case 3:
+        return "We'll customize your experience accordingly.";
+      default:
+        return "Tell us what you like.";
     }
   };
 
@@ -132,7 +159,7 @@ const Onboarding = () => {
 
       {/* Progress Bar */}
       <div className="w-full bg-gray-200 h-1 mb-8">
-        <div 
+        <div
           className="h-1 bg-gradient-to-r from-pink-500 to-cyan-400 transition-all duration-500 ease-out"
           style={{ width: `${(currentStep / 3) * 100}%` }}
         ></div>
@@ -140,7 +167,6 @@ const Onboarding = () => {
 
       {/* CONTENT WRAPPER */}
       <div className="flex flex-col items-center px-4 py-8 sm:py-10 md:py-12">
-        
         {/* Animated Header */}
         <div className="text-center mb-8 animate-fade-in">
           <div className="flex justify-center items-center space-x-2 mb-4">
@@ -159,7 +185,7 @@ const Onboarding = () => {
               />
             ))}
           </div>
-          
+
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 bg-clip-text text-transparent animate-pulse-slow">
             {getStepTitle()}
           </h1>
@@ -203,7 +229,11 @@ const Onboarding = () => {
         {currentStep === 2 && (
           <div className="w-full max-w-md space-y-6 mb-8 animate-slide-up">
             <div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}>
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  isDarkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
                 Username
               </label>
               <input
@@ -218,9 +248,13 @@ const Onboarding = () => {
                 placeholder="Enter your username"
               />
             </div>
-            
+
             <div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}>
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  isDarkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
                 Bio
               </label>
               <textarea
@@ -254,9 +288,15 @@ const Onboarding = () => {
                 }`}
               >
                 <div className="font-semibold">{option.label}</div>
-                <div className={`text-sm mt-1 ${
-                  userData.frequency === option.value ? "text-gray-800" : isDarkMode ? "text-gray-400" : "text-gray-600"
-                }`}>
+                <div
+                  className={`text-sm mt-1 ${
+                    userData.frequency === option.value
+                      ? "text-gray-800"
+                      : isDarkMode
+                      ? "text-gray-400"
+                      : "text-gray-600"
+                  }`}
+                >
                   {option.value === "casual" && "Check in occasionally"}
                   {option.value === "regular" && "Use a few times per week"}
                   {option.value === "active" && "Very active - daily user"}
@@ -272,11 +312,12 @@ const Onboarding = () => {
             isDarkMode ? "text-gray-400" : "text-gray-500"
           }`}
         >
-          {currentStep === 1 && (
-            selectedInterests.length === 0
+          {currentStep === 1 &&
+            (selectedInterests.length === 0
               ? "Select at least one interest to continue"
-              : `${selectedInterests.length} interest${selectedInterests.length !== 1 ? 's' : ''} selected`
-          )}
+              : `${selectedInterests.length} interest${
+                  selectedInterests.length !== 1 ? "s" : ""
+                } selected`)}
           {currentStep === 2 && "Complete your profile information"}
           {currentStep === 3 && "Choose how you plan to use Konekta"}
         </p>
@@ -285,14 +326,20 @@ const Onboarding = () => {
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <button
             onClick={handleContinue}
-            disabled={(currentStep === 1 && selectedInterests.length === 0) || loading}
+            disabled={
+              (currentStep === 1 && selectedInterests.length === 0) || loading
+            }
             className={`px-8 py-3 rounded-full font-bold text-lg transition-all duration-300 ${
               (currentStep === 1 && selectedInterests.length === 0) || loading
                 ? "bg-gray-700 text-gray-400 cursor-not-allowed opacity-50"
                 : "bg-gradient-to-r from-pink-500 to-cyan-400 text-black hover:scale-105 hover:shadow-lg transform"
             }`}
           >
-            {loading ? "Saving..." : currentStep === 3 ? "Get Started" : "Continue"}
+            {loading
+              ? "Saving..."
+              : currentStep === 3
+              ? "Get Started"
+              : "Continue"}
           </button>
 
           <button
@@ -311,22 +358,31 @@ const Onboarding = () => {
       {/* Add these styles for animations */}
       <style jsx>{`
         @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
         }
         @keyframes slide-up {
-          from { 
+          from {
             opacity: 0;
             transform: translateY(20px);
           }
-          to { 
+          to {
             opacity: 1;
             transform: translateY(0);
           }
         }
         @keyframes pulse-slow {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.8; }
+          0%,
+          100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.8;
+          }
         }
         .animate-fade-in {
           animation: fade-in 0.6s ease-out;

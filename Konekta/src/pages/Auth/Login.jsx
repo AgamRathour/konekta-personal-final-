@@ -16,14 +16,14 @@ const Login = () => {
   const [loginSuccess, setLoginSuccess] = useState(false);
 
   useEffect(() => {
-    const isDark = localStorage.getItem('konekta_theme') !== 'light';
+    const isDark = localStorage.getItem("konekta_theme") !== "light";
     setIsDarkMode(isDark);
   }, []);
 
   const toggleTheme = () => {
     const newMode = !isDarkMode;
     setIsDarkMode(newMode);
-    localStorage.setItem('konekta_theme', newMode ? 'dark' : 'light');
+    localStorage.setItem("konekta_theme", newMode ? "dark" : "light");
   };
 
   const validateEmail = (email) => {
@@ -108,7 +108,16 @@ const Login = () => {
 
         // Auto-redirect after 1.5 seconds
         setTimeout(() => {
-          navigate("/onboarding");
+          // Check if user has profile setup completed
+          const hasProfile = localStorage.getItem("konekta_user_profile");
+
+          if (hasProfile) {
+            // Existing user with profile - go straight to profile
+            navigate("/profile");
+          } else {
+            // New user - go to onboarding
+            navigate("/onboarding");
+          }
         }, 1500);
 
         setLoading(false);
@@ -121,9 +130,11 @@ const Login = () => {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-500 ${
-      isDarkMode ? "bg-black text-white" : "bg-gray-100 text-gray-800"
-    }`}>
+    <div
+      className={`min-h-screen transition-colors duration-500 ${
+        isDarkMode ? "bg-black text-white" : "bg-gray-100 text-gray-800"
+      }`}
+    >
       {/* Theme Toggle */}
       <button
         onClick={toggleTheme}
@@ -148,8 +159,8 @@ const Login = () => {
       <button
         onClick={() => navigate("/")}
         className={`fixed top-6 left-6 z-50 flex items-center gap-2 px-4 py-2 transition group ${
-          isDarkMode 
-            ? "text-gray-300 hover:text-white" 
+          isDarkMode
+            ? "text-gray-300 hover:text-white"
             : "text-gray-600 hover:text-black"
         }`}
       >
@@ -173,16 +184,20 @@ const Login = () => {
         <div className="w-full max-w-md">
           {/* Header */}
           <div className="mb-8 text-center">
-            <h1 className={`text-3xl md:text-4xl font-bold mb-4 ${
-              isDarkMode 
-                ? "bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400" 
-                : "bg-gradient-to-r from-pink-600 via-purple-600 to-cyan-600"
-            } bg-clip-text text-transparent`}>
+            <h1
+              className={`text-3xl md:text-4xl font-bold mb-4 ${
+                isDarkMode
+                  ? "bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400"
+                  : "bg-gradient-to-r from-pink-600 via-purple-600 to-cyan-600"
+              } bg-clip-text text-transparent`}
+            >
               Welcome Back
             </h1>
-            <p className={`text-base ${
-              isDarkMode ? "text-gray-300" : "text-gray-600"
-            }`}>
+            <p
+              className={`text-base ${
+                isDarkMode ? "text-gray-300" : "text-gray-600"
+              }`}
+            >
               Log in to your Konekta account
             </p>
           </div>
@@ -190,18 +205,22 @@ const Login = () => {
           {/* Form Container */}
           <div className="group relative mb-8">
             {/* Gradient Border Glow */}
-            <div className={`absolute inset-0 rounded-2xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 ${
-              isDarkMode 
-                ? "bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400" 
-                : "bg-gradient-to-r from-pink-600 via-purple-600 to-cyan-600"
-            }`} />
+            <div
+              className={`absolute inset-0 rounded-2xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 ${
+                isDarkMode
+                  ? "bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400"
+                  : "bg-gradient-to-r from-pink-600 via-purple-600 to-cyan-600"
+              }`}
+            />
 
             {/* Card */}
-            <div className={`relative rounded-2xl p-6 backdrop-blur-sm border transition-all duration-300 ${
-              isDarkMode 
-                ? "bg-gray-900 border-purple-500/30" 
-                : "bg-gray-50 border-purple-200"
-            }`}>
+            <div
+              className={`relative rounded-2xl p-6 backdrop-blur-sm border transition-all duration-300 ${
+                isDarkMode
+                  ? "bg-gray-900 border-purple-500/30"
+                  : "bg-gray-50 border-purple-200"
+              }`}
+            >
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Email */}
@@ -216,16 +235,16 @@ const Login = () => {
                     className={`w-full px-4 py-3 rounded-lg text-sm transition-all ${
                       errors.email
                         ? "border-red-500"
-                        : isDarkMode 
-                          ? "border-gray-700 focus:border-purple-500" 
-                          : "border-gray-300 focus:border-purple-400"
+                        : isDarkMode
+                        ? "border-gray-700 focus:border-purple-500"
+                        : "border-gray-300 focus:border-purple-400"
                     } ${
-                      isDarkMode 
-                        ? "bg-gray-800 text-white placeholder-gray-500" 
+                      isDarkMode
+                        ? "bg-gray-800 text-white placeholder-gray-500"
                         : "bg-white text-gray-900 placeholder-gray-400"
                     } border focus:outline-none focus:ring-2 ${
-                      isDarkMode 
-                        ? "focus:ring-purple-500/20" 
+                      isDarkMode
+                        ? "focus:ring-purple-500/20"
                         : "focus:ring-purple-400/20"
                     } disabled:opacity-50`}
                   />
@@ -247,16 +266,16 @@ const Login = () => {
                       className={`w-full px-4 py-3 rounded-lg text-sm transition-all ${
                         errors.password
                           ? "border-red-500"
-                          : isDarkMode 
-                            ? "border-gray-700 focus:border-purple-500" 
-                            : "border-gray-300 focus:border-purple-400"
+                          : isDarkMode
+                          ? "border-gray-700 focus:border-purple-500"
+                          : "border-gray-300 focus:border-purple-400"
                       } ${
-                        isDarkMode 
-                          ? "bg-gray-800 text-white placeholder-gray-500" 
+                        isDarkMode
+                          ? "bg-gray-800 text-white placeholder-gray-500"
                           : "bg-white text-gray-900 placeholder-gray-400"
                       } border focus:outline-none focus:ring-2 ${
-                        isDarkMode 
-                          ? "focus:ring-purple-500/20" 
+                        isDarkMode
+                          ? "focus:ring-purple-500/20"
                           : "focus:ring-purple-400/20"
                       } disabled:opacity-50 pr-12`}
                     />
@@ -264,7 +283,9 @@ const Login = () => {
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className={`absolute right-3 top-3 transition ${
-                        isDarkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-500 hover:text-gray-700"
+                        isDarkMode
+                          ? "text-gray-400 hover:text-gray-200"
+                          : "text-gray-500 hover:text-gray-700"
                       }`}
                       disabled={loading || loginSuccess}
                     >
@@ -280,11 +301,13 @@ const Login = () => {
 
                 {/* Success Message */}
                 {message && (
-                  <div className={`p-3 rounded-lg border text-sm text-center ${
-                    isDarkMode 
-                      ? "bg-green-900/30 border-green-600 text-green-400" 
-                      : "bg-green-100 border-green-400 text-green-700"
-                  }`}>
+                  <div
+                    className={`p-3 rounded-lg border text-sm text-center ${
+                      isDarkMode
+                        ? "bg-green-900/30 border-green-600 text-green-400"
+                        : "bg-green-100 border-green-400 text-green-700"
+                    }`}
+                  >
                     {message}
                   </div>
                 )}
@@ -307,16 +330,18 @@ const Login = () => {
                 </button>
 
                 {/* Don't have account */}
-                <p className={`text-center text-sm mt-6 ${
-                  isDarkMode ? "text-gray-400" : "text-gray-600"
-                }`}>
+                <p
+                  className={`text-center text-sm mt-6 ${
+                    isDarkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
                   Don't have an account?{" "}
                   <button
                     type="button"
                     onClick={() => navigate("/signup")}
                     className={`font-semibold transition ${
-                      isDarkMode 
-                        ? "text-pink-500 hover:text-pink-400" 
+                      isDarkMode
+                        ? "text-pink-500 hover:text-pink-400"
                         : "text-pink-600 hover:text-pink-500"
                     }`}
                     disabled={loading}
