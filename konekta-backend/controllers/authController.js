@@ -1,246 +1,184 @@
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
+import User from "../models/User.js";
+import jwt from "jsonwebtoken";
+import bcryptjs from "bcryptjs";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const dbFilePath = path.join(__dirname, "../data/users.json");
-
-// Initialize mock database
-const initMockDb = () => {
-  const dataDir = path.join(__dirname, "../data");
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir);
-  }
-  if (!fs.existsSync(dbFilePath)) {
-    fs.writeFileSync(dbFilePath, JSON.stringify([], null, 2));
-  }
+// Generate JWT Token
+const generateToken = (userId) => {
+  const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_key_change_this";
+  return jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: "7d" });
 };
 
-const readMockDb = () => {
-  try {
-    const data = fs.readFileSync(dbFilePath, "utf-8");
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
-};
-
-const writeMockDb = (data) => {
-  fs.writeFileSync(dbFilePath, JSON.stringify(data, null, 2));
-};
-
-initMockDb();
-
-// Generate temporary password
-const generateTempPassword = () => {
-  return Math.random().toString(36).substring(2, 10).toUpperCase();
-};
-
-// Sign Up - Create new user with temporary password
+// Sign Up - Create new user with email and password
 export const signup = async (req, res, next) => {
   try {
-    const { firstName, lastName, email, phone, dateOfBirth } = req.body;
+    const { email, password } = req.body;
 
     // Validate required fields
-    if (!firstName || !lastName || !email || !phone || !dateOfBirth) {
-      return res.status(400).json({ message: "Missing required fields" });
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
     }
 
-    const users = readMockDb();
-    
     // Check if user already exists
-    if (users.find((u) => u.email === email)) {
-      return res.status(400).json({ message: "User already exists" });
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(409).json({ message: "User already exists with this email" });
     }
 
-    // Generate temporary password
-    const tempPassword = generateTempPassword();
+    // Hash password
+    const salt = await bcryptjs.genSalt(10);
+    const hashedPassword = await bcryptjs.hash(password, salt);
 
-    const newUser = {
-      id: Date.now().toString(),
-      firstName,
-      lastName,
-      email,
-      phone,
-      dateOfBirth,
-      tempPassword, // Send this to user
-      isPasswordSet: false,
-      username: null,
-      fullName: `${firstName} ${lastName}`,
-      bio: null,
-      profilePic: null,
-      interests: [],
-      isNewUser: true,
-      createdAt: new Date(),
-    };
+    // Create new user
+    const newUser = new User({
+      email: email.toLowerCase(),
+      password: hashedPassword,
+    });
 
-    users.push(newUser);
-    writeMockDb(users);
+    await newUser.save();
+
+    console.log(`✅ User created: ${email}`);
 
     return res.status(201).json({
-      message: "User created successfully. Use temporary password to login.",
-      tempPassword, // Return to frontend to show to user
+      message: "Account created successfully. Please log in.",
       user: {
-        id: newUser.id,
-        firstName: newUser.firstName,
-        lastName: newUser.lastName,
+        id: newUser._id,
         email: newUser.email,
-        phone: newUser.phone,
-        dateOfBirth: newUser.dateOfBirth,
       },
     });
   } catch (err) {
+    console.error("❌ Signup error:", err.message);
     next(err);
   }
 };
 
-// Login - Verify email and password
+// Login - Verify email and password, return JWT
 export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
+    // Validate required fields
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-    const users = readMockDb();
-    const user = users.find((u) => u.email === email);
-
+    // Find user by email
+    const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
-      return res.status(404).json({ message: "User not found. Please sign up first." });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Check if password matches (either temp password or permanent password)
-    const isPasswordValid = password === user.tempPassword || password === user.password;
-
+    // Compare password
+    const isPasswordValid = await user.matchPassword(password);
     if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid password" });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // If temp password was used, don't update yet (let user set permanent in onboarding)
-    // If permanent password, user is returning
-    
+    // Generate JWT token
+    const token = generateToken(user._id);
+
+    console.log(`✅ User logged in: ${email}`);
+
     return res.json({
       message: "Login successful",
+      token,
       user: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        id: user._id,
         email: user.email,
-        phone: user.phone,
-        dateOfBirth: user.dateOfBirth,
         username: user.username,
         fullName: user.fullName,
-        bio: user.bio,
-        profilePic: user.profilePic,
-        interests: user.interests || [],
-        isNewUser: user.isNewUser,
-        isPasswordSet: user.isPasswordSet,
+        profileImage: user.profileImage,
       },
     });
   } catch (err) {
+    console.error("❌ Login error:", err.message);
     next(err);
   }
 };
 
-// Get user by email
+// Get current user (protected route)
+export const getCurrentUser = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json({
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        fullName: user.fullName,
+        bio: user.bio,
+        profileImage: user.profileImage,
+        interests: user.interests,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Get current user error:", err.message);
+    next(err);
+  }
+};
+
+// Update user profile
+export const updateUser = async (req, res, next) => {
+  try {
+    const { username, fullName, bio, profileImage, interests } = req.body;
+    const userId = req.user.id;
+
+    const updateData = {};
+    if (username !== undefined) updateData.username = username;
+    if (fullName !== undefined) updateData.fullName = fullName;
+    if (bio !== undefined) updateData.bio = bio;
+    if (profileImage !== undefined) updateData.profileImage = profileImage;
+    if (interests !== undefined) updateData.interests = interests;
+    updateData.updatedAt = Date.now();
+
+    const user = await User.findByIdAndUpdate(userId, updateData, { new: true }).select("-password");
+
+    console.log(`✅ User updated: ${user.email}`);
+
+    return res.json({
+      message: "User updated successfully",
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        fullName: user.fullName,
+        bio: user.bio,
+        profileImage: user.profileImage,
+        interests: user.interests,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Update user error:", err.message);
+    next(err);
+  }
+};
+
+// Get user by email (public endpoint)
 export const getUserByEmail = async (req, res, next) => {
   try {
     const { email } = req.params;
 
-    const users = readMockDb();
-    const user = users.find((u) => u.email === email);
-
+    const user = await User.findOne({ email: email.toLowerCase() }).select("-password");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     return res.json({
       user: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        id: user._id,
         email: user.email,
-        phone: user.phone,
-        dateOfBirth: user.dateOfBirth,
         username: user.username,
         fullName: user.fullName,
         bio: user.bio,
-        profilePic: user.profilePic,
-        interests: user.interests || [],
-        isNewUser: user.isNewUser,
-        isPasswordSet: user.isPasswordSet,
+        profileImage: user.profileImage,
+        interests: user.interests,
       },
     });
   } catch (err) {
-    next(err);
-  }
-};
-
-// Set permanent password (after first login with temp password)
-export const setPassword = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
-    }
-
-    const users = readMockDb();
-    const userIndex = users.findIndex((u) => u.email === email);
-
-    if (userIndex === -1) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    users[userIndex].password = password;
-    users[userIndex].isPasswordSet = true;
-    users[userIndex].updatedAt = new Date();
-
-    writeMockDb(users);
-
-    return res.json({
-      message: "Password set successfully",
-      user: users[userIndex],
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Update user (interests, profile, username)
-export const updateUser = async (req, res, next) => {
-  try {
-    const { email } = req.params;
-    const { username, fullName, bio, profilePic, interests, isNewUser } =
-      req.body;
-
-    const users = readMockDb();
-    const userIndex = users.findIndex((u) => u.email === email);
-
-    if (userIndex === -1) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const user = users[userIndex];
-    
-    if (username) user.username = username;
-    if (fullName) user.fullName = fullName;
-    if (bio) user.bio = bio;
-    if (profilePic) user.profilePic = profilePic;
-    if (interests) user.interests = interests;
-    if (isNewUser !== undefined) user.isNewUser = isNewUser;
-    user.updatedAt = new Date();
-
-    users[userIndex] = user;
-    writeMockDb(users);
-
-    return res.json({
-      message: "User updated successfully",
-      user,
-    });
-  } catch (err) {
+    console.error("❌ Get user by email error:", err.message);
     next(err);
   }
 };
