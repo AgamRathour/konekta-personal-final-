@@ -1,21 +1,32 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "../../context/ThemeContext";
+import { useTheme } from "../../context/useTheme";
 import * as authService from "../../services/authService";
 
 const Onboarding = () => {
   const navigate = useNavigate();
   const { isDarkMode, toggleTheme } = useTheme();
-  const [selectedInterests, setSelectedInterests] = useState([]);
+  const storedUser = useMemo(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      return JSON.parse(localStorage.getItem("konekta_user")) || {};
+    } catch {
+      return {};
+    }
+  }, []);
+
+  const [selectedInterests, setSelectedInterests] = useState(() =>
+    Array.isArray(storedUser.interests) ? storedUser.interests : []
+  );
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [userData, setUserData] = useState({
-    username: "",
-    bio: "",
+  const [userData, setUserData] = useState(() => ({
+    username: storedUser.username || "",
+    bio: storedUser.bio || "",
     frequency: "regular",
     password: "",
     confirmPassword: "",
-  });
+  }));
 
   const interests = [
     "Music",
@@ -40,11 +51,12 @@ const Onboarding = () => {
     "Memes",
   ];
 
-  const frequencyOptions = [
-    { value: "casual", label: "Casual User" },
-    { value: "regular", label: "Regular User" },
-    { value: "active", label: "Very Active" },
-  ];
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem("konekta_isLoggedIn") === "true";
+    if (!isLoggedIn) {
+      navigate("/login");
+    }
+  }, [navigate]);
 
   const toggleInterest = (interest) => {
     setSelectedInterests((prev) =>
@@ -84,30 +96,14 @@ const Onboarding = () => {
     setLoading(true);
 
     try {
-      // Get current user from localStorage
-      const currentUser = JSON.parse(localStorage.getItem("konekta_user"));
-
-      if (!currentUser || !currentUser.email) {
-        throw new Error("User not found. Please log in again.");
-      }
-
-      // Call backend to update interests and mark as onboarded
-      await authService.updateUser(currentUser.email, {
-        interests: selectedInterests,
-        isNewUser: false,
-      });
-
-      // Update localStorage
-      const userProfile = {
-        ...currentUser,
+      const { user } = await authService.updateUser({
         interests: selectedInterests,
         username: userData.username,
         bio: userData.bio,
         isNewUser: false,
         onboarded: true,
-      };
-
-      localStorage.setItem("konekta_user", JSON.stringify(userProfile));
+      });
+      localStorage.setItem("konekta_user", JSON.stringify(user));
       localStorage.setItem(
         "konekta_interests",
         JSON.stringify(selectedInterests)

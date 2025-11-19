@@ -1,24 +1,26 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as authService from "../../services/authService.js";
 
 const SignIn = () => {
   const navigate = useNavigate();
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const getInitialTheme = () =>
+    (typeof window !== "undefined" &&
+      localStorage.getItem("konekta_theme") !== "light") ||
+    false;
+
+  const [isDarkMode, setIsDarkMode] = useState(getInitialTheme);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
+    password: "",
+    confirmPassword: "",
   });
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    const isDark = localStorage.getItem("konekta_theme") !== "light";
-    setIsDarkMode(isDark);
-  }, []);
 
   const toggleTheme = () => {
     const newMode = !isDarkMode;
@@ -53,6 +55,14 @@ const SignIn = () => {
     if (!formData.email.trim()) newErrors.email = "Email is required";
     else if (!validateEmail(formData.email))
       newErrors.email = "Invalid email format";
+    if (!formData.password.trim())
+      newErrors.password = "Password is required";
+    else if (formData.password.length < 6)
+      newErrors.password = "Password must be at least 6 characters";
+    if (!formData.confirmPassword.trim())
+      newErrors.confirmPassword = "Please confirm your password";
+    else if (formData.confirmPassword !== formData.password)
+      newErrors.confirmPassword = "Passwords do not match";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -69,15 +79,16 @@ const SignIn = () => {
     setMessage("");
 
     try {
-      await authService.signUp(
-        formData.firstName,
-        formData.lastName,
-        formData.email
-      );
+      await authService.signUp({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+      });
 
       setMessage("✅ Account created! Redirecting to login...");
+      setLoading(false);
 
-      // Auto-redirect after 2 seconds
       setTimeout(() => {
         navigate("/login");
       }, 2000);
@@ -261,6 +272,62 @@ const SignIn = () => {
                 />
                 {errors.email && (
                   <p className="text-red-400 text-xs mt-1">{errors.email}</p>
+                )}
+              </div>
+
+              {/* Password */}
+              <div>
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Create Password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  disabled={loading}
+                  className={`w-full px-4 py-3 rounded-lg text-sm transition-all ${
+                    errors.password
+                      ? "border-red-500"
+                      : isDarkMode
+                      ? "border-gray-700 focus:border-purple-500"
+                      : "border-gray-300 focus:border-purple-400"
+                  } ${
+                    isDarkMode
+                      ? "bg-gray-800 text-white placeholder-gray-500"
+                      : "bg-gray-50 text-gray-900 placeholder-gray-400"
+                  } border focus:outline-none disabled:opacity-50`}
+                />
+                {errors.password && (
+                  <p className="text-red-400 text-xs mt-1">
+                    {errors.password}
+                  </p>
+                )}
+              </div>
+
+              {/* Confirm Password */}
+              <div>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  placeholder="Confirm Password"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  disabled={loading}
+                  className={`w-full px-4 py-3 rounded-lg text-sm transition-all ${
+                    errors.confirmPassword
+                      ? "border-red-500"
+                      : isDarkMode
+                      ? "border-gray-700 focus:border-purple-500"
+                      : "border-gray-300 focus:border-purple-400"
+                  } ${
+                    isDarkMode
+                      ? "bg-gray-800 text-white placeholder-gray-500"
+                      : "bg-gray-50 text-gray-900 placeholder-gray-400"
+                  } border focus:outline-none disabled:opacity-50`}
+                />
+                {errors.confirmPassword && (
+                  <p className="text-red-400 text-xs mt-1">
+                    {errors.confirmPassword}
+                  </p>
                 )}
               </div>
 

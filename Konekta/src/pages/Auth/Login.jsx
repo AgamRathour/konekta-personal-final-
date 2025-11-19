@@ -1,29 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as authService from "../../services/authService";
 
 const Login = () => {
   const navigate = useNavigate();
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const getInitialTheme = () =>
+    (typeof window !== "undefined" &&
+      localStorage.getItem("konekta_theme") !== "light") ||
+    false;
+
+  const [isDarkMode, setIsDarkMode] = useState(getInitialTheme);
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [loginSuccess, setLoginSuccess] = useState(false);
 
-  useEffect(() => {
-    const isDark = localStorage.getItem("konekta_theme") !== "light";
-    setIsDarkMode(isDark);
-  }, []);
-
   const toggleTheme = () => {
     const newMode = !isDarkMode;
     setIsDarkMode(newMode);
     localStorage.setItem("konekta_theme", newMode ? "dark" : "light");
-  };
-
-  const validateEmail = (email) => {
-    return email.includes("@") && email.length > 5;
   };
 
   const handleInputChange = (e) => {
@@ -35,13 +31,12 @@ const Login = () => {
   const validateForm = () => {
     const newErrors = {};
     if (!formData.email.trim()) newErrors.email = "Email is required";
-    else if (!validateEmail(formData.email))
-      newErrors.email = "Invalid email format";
-    
-    if (!formData.password.trim()) newErrors.password = "Password is required";
-    else if (formData.password.length < 4)
-      newErrors.password = "Password must be at least 4 characters";
-    
+
+    if (!formData.password.trim())
+      newErrors.password = "Password is required";
+    else if (formData.password.length < 8)
+      newErrors.password = "Password must be at least 8 characters";
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -55,37 +50,36 @@ const Login = () => {
     setErrors({});
 
     try {
-      const response = await authService.login(formData.email, formData.password);
-      const userData = response.user || response;
+      const { user: userData } = await authService.login(
+        formData.email,
+        formData.password
+      );
 
-      if (!userData) {
-        setLoading(false);
-        setErrors({ email: "Account not found. Please sign up first." });
-        return;
-      }
-
-      localStorage.setItem("konekta_isLoggedIn", "true");
-      localStorage.setItem("konekta_user", JSON.stringify(userData));
-      localStorage.setItem("konekta_currentUser", JSON.stringify(userData));
-
-      setMessage(`✅ Welcome back, ${userData.firstName}!`);
+      const friendlyName =
+        userData?.username ||
+        userData?.fullName ||
+        userData?.firstName ||
+        "friend";
+      setMessage(`✅ Welcome ${friendlyName}!`);
       setLoginSuccess(true);
 
-      // If password not set (new user with temp password), go to change password
-      // Otherwise go to profile
+      const hasCompletedProfile =
+        Boolean(userData.bio) ||
+        Boolean(userData.username) ||
+        (Array.isArray(userData.interests) && userData.interests.length > 0);
+
       setTimeout(() => {
-        if (!userData.isPasswordSet) {
-          navigate("/change-password");
-        } else {
-          navigate("/profile");
-        }
+        navigate(hasCompletedProfile ? "/profile" : "/onboarding");
       }, 1500);
 
       setLoading(false);
     } catch (err) {
       console.error("Login error:", err);
       setLoading(false);
-      setErrors({ email: err.message || "Invalid email or password" });
+      setErrors((prev) => ({
+        ...prev,
+        password: err.message || "Invalid email or password",
+      }));
     }
   };
 

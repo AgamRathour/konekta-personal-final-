@@ -1,39 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as authService from "../../services/authService";
 
 const SignUp = () => {
   const navigate = useNavigate();
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const getInitialTheme = () =>
+    (typeof window !== "undefined" &&
+      localStorage.getItem("konekta_theme") !== "light") ||
+    false;
+
+  const [isDarkMode, setIsDarkMode] = useState(getInitialTheme);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
-    phone: "",
-    dateOfBirth: "",
+    password: "",
+    confirmPassword: "",
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [tempPassword, setTempPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-
-  useEffect(() => {
-    const isDark = localStorage.getItem("konekta_theme") !== "light";
-    setIsDarkMode(isDark);
-  }, []);
+  const [message, setMessage] = useState("");
 
   const toggleTheme = () => {
     const newMode = !isDarkMode;
     setIsDarkMode(newMode);
     localStorage.setItem("konekta_theme", newMode ? "dark" : "light");
-  };
-
-  const validateEmail = (email) => {
-    return email.includes("@") && email.length > 5;
-  };
-
-  const validatePhone = (phone) => {
-    return phone.replace(/\D/g, "").length === 10;
   };
 
   const handleInputChange = (e) => {
@@ -45,18 +36,21 @@ const SignUp = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.firstName.trim()) newErrors.firstName = "First name is required";
-    if (!formData.lastName.trim()) newErrors.lastName = "Last name is required";
-
+    if (!formData.firstName.trim())
+      newErrors.firstName = "First name is required";
+    if (!formData.lastName.trim())
+      newErrors.lastName = "Last name is required";
     if (!formData.email.trim()) newErrors.email = "Email is required";
-    else if (!validateEmail(formData.email)) newErrors.email = "Invalid email";
 
-    if (!formData.phone.trim()) newErrors.phone = "Phone number is required";
-    else if (!validatePhone(formData.phone))
-      newErrors.phone = "Phone must be 10 digits";
+    if (!formData.password.trim())
+      newErrors.password = "Password is required";
+    else if (formData.password.length < 8)
+      newErrors.password = "Password must be at least 8 characters";
 
-    if (!formData.dateOfBirth.trim())
-      newErrors.dateOfBirth = "Date of birth is required";
+    if (!formData.confirmPassword.trim())
+      newErrors.confirmPassword = "Please confirm your password";
+    else if (formData.password !== formData.confirmPassword)
+      newErrors.confirmPassword = "Passwords do not match";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -68,27 +62,22 @@ const SignUp = () => {
 
     setLoading(true);
     setErrors({});
+    setMessage("");
 
     try {
-      const response = await authService.signUp(
-        formData.firstName,
-        formData.lastName,
-        formData.email,
-        formData.phone,
-        formData.dateOfBirth
-      );
+      await authService.signUp({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+      });
 
-      if (response.tempPassword) {
-        setTempPassword(response.tempPassword);
-        setTimeout(() => {
-          alert(`✅ Account created! Your temporary password is: ${response.tempPassword}`);
-          navigate("/login");
-        }, 2000);
-      } else {
-        navigate("/login");
-      }
-
+      setMessage("✅ Account created! Redirecting to login...");
       setLoading(false);
+
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500);
     } catch (err) {
       console.error("SignUp error:", err);
       setLoading(false);
@@ -110,11 +99,7 @@ const SignUp = () => {
             : "bg-gray-200 text-blue-600 shadow-lg shadow-blue-600/20"
         }`}
       >
-        {isDarkMode ? (
-          <span className="text-lg">☀️</span>
-        ) : (
-          <span className="text-lg">🌙</span>
-        )}
+        {isDarkMode ? "☀️" : "🌙"}
       </button>
 
       <button
@@ -138,25 +123,27 @@ const SignUp = () => {
         >
           <h1
             className={`text-4xl font-bold text-center mb-8 transition-all ${
-              isDarkMode ? "text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500" : "text-blue-600"
+              isDarkMode
+                ? "text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500"
+                : "text-blue-600"
             }`}
           >
             Sign Up
           </h1>
 
-          {tempPassword && (
+          {message && (
             <div
               className={`mb-6 p-4 rounded-lg text-center ${
-                isDarkMode ? "bg-green-900/30 text-green-400" : "bg-green-100 text-green-700"
+                isDarkMode
+                  ? "bg-green-900/30 text-green-400"
+                  : "bg-green-100 text-green-700"
               }`}
             >
-              <p className="font-bold mb-2">Account Created!</p>
-              <p>Temp Password: {tempPassword}</p>
+              {message}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* First Name */}
             <div>
               <label
                 className={`block text-sm font-semibold mb-2 ${
@@ -186,7 +173,6 @@ const SignUp = () => {
               )}
             </div>
 
-            {/* Last Name */}
             <div>
               <label
                 className={`block text-sm font-semibold mb-2 ${
@@ -216,80 +202,20 @@ const SignUp = () => {
               )}
             </div>
 
-            {/* Date of Birth */}
             <div>
               <label
                 className={`block text-sm font-semibold mb-2 ${
                   isDarkMode ? "text-pink-400" : "text-blue-600"
                 }`}
               >
-                Date of Birth
+                Email address
               </label>
               <input
-                type="date"
-                name="dateOfBirth"
-                value={formData.dateOfBirth}
-                onChange={handleInputChange}
-                className={`w-full px-4 py-3 rounded-full transition-all focus:outline-none focus:ring-2 ${
-                  isDarkMode
-                    ? `bg-gray-800 border-2 ${
-                        errors.dateOfBirth ? "border-red-500" : "border-pink-500"
-                      } text-white focus:border-pink-400 focus:ring-pink-500/30`
-                    : `bg-gray-100 border-2 ${
-                        errors.dateOfBirth ? "border-red-500" : "border-blue-400"
-                      } text-gray-800 focus:border-blue-400 focus:ring-blue-400/30`
-                }`}
-              />
-              {errors.dateOfBirth && (
-                <p className="text-red-500 text-sm mt-1">{errors.dateOfBirth}</p>
-              )}
-            </div>
-
-            {/* Phone Number */}
-            <div>
-              <label
-                className={`block text-sm font-semibold mb-2 ${
-                  isDarkMode ? "text-pink-400" : "text-blue-600"
-                }`}
-              >
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                placeholder="10-digit phone number"
-                className={`w-full px-4 py-3 rounded-full transition-all focus:outline-none focus:ring-2 ${
-                  isDarkMode
-                    ? `bg-gray-800 border-2 ${
-                        errors.phone ? "border-red-500" : "border-pink-500"
-                      } text-white placeholder-gray-500 focus:border-pink-400 focus:ring-pink-500/30`
-                    : `bg-gray-100 border-2 ${
-                        errors.phone ? "border-red-500" : "border-blue-400"
-                      } text-gray-800 placeholder-gray-500 focus:border-blue-400 focus:ring-blue-400/30`
-                }`}
-              />
-              {errors.phone && (
-                <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-              )}
-            </div>
-
-            {/* Email */}
-            <div>
-              <label
-                className={`block text-sm font-semibold mb-2 ${
-                  isDarkMode ? "text-pink-400" : "text-blue-600"
-                }`}
-              >
-                Email (for 2FA)
-              </label>
-              <input
-                type="email"
+                type="text"
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                placeholder="your@gmail.com"
+                placeholder="you@example.com"
                 className={`w-full px-4 py-3 rounded-full transition-all focus:outline-none focus:ring-2 ${
                   isDarkMode
                     ? `bg-gray-800 border-2 ${
@@ -305,7 +231,70 @@ const SignUp = () => {
               )}
             </div>
 
-            {/* Submit Button */}
+            <div>
+              <label
+                className={`block text-sm font-semibold mb-2 ${
+                  isDarkMode ? "text-pink-400" : "text-blue-600"
+                }`}
+              >
+                Password
+              </label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="At least 8 characters"
+                className={`w-full px-4 py-3 rounded-full transition-all focus:outline-none focus:ring-2 ${
+                  isDarkMode
+                    ? `bg-gray-800 border-2 ${
+                        errors.password ? "border-red-500" : "border-pink-500"
+                      } text-white placeholder-gray-500 focus:border-pink-400 focus:ring-pink-500/30`
+                    : `bg-gray-100 border-2 ${
+                        errors.password ? "border-red-500" : "border-blue-400"
+                      } text-gray-800 placeholder-gray-500 focus:border-blue-400 focus:ring-blue-400/30`
+                }`}
+              />
+              {errors.password && (
+                <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+              )}
+            </div>
+
+            <div>
+              <label
+                className={`block text-sm font-semibold mb-2 ${
+                  isDarkMode ? "text-pink-400" : "text-blue-600"
+                }`}
+              >
+                Confirm Password
+              </label>
+              <input
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
+                placeholder="Re-enter password"
+                className={`w-full px-4 py-3 rounded-full transition-all focus:outline-none focus:ring-2 ${
+                  isDarkMode
+                    ? `bg-gray-800 border-2 ${
+                        errors.confirmPassword
+                          ? "border-red-500"
+                          : "border-pink-500"
+                      } text-white placeholder-gray-500 focus:border-pink-400 focus:ring-pink-500/30`
+                    : `bg-gray-100 border-2 ${
+                        errors.confirmPassword
+                          ? "border-red-500"
+                          : "border-blue-400"
+                      } text-gray-800 placeholder-gray-500 focus:border-blue-400 focus:ring-blue-400/30`
+                }`}
+              />
+              {errors.confirmPassword && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.confirmPassword}
+                </p>
+              )}
+            </div>
+
             <button
               type="submit"
               disabled={loading}
@@ -315,7 +304,7 @@ const SignUp = () => {
                   : "bg-gradient-to-r from-blue-500 to-cyan-500 hover:shadow-lg hover:shadow-blue-500/50 disabled:opacity-50"
               } ${loading ? "cursor-not-allowed" : "cursor-pointer hover:scale-105"}`}
             >
-              {loading ? "Creating Account..." : "Sign In"}
+              {loading ? "Creating Account..." : "Create Account"}
             </button>
           </form>
 

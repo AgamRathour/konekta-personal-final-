@@ -1,20 +1,19 @@
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import img2 from "../../assets/images/img2.jpeg";
 
 const Landing = () => {
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const getInitialTheme = () =>
+    (typeof window !== "undefined" &&
+      localStorage.getItem("konekta_theme") !== "light") ||
+    false;
 
-  useEffect(() => {
-    // Check system preference or stored preference
-    const isDark = localStorage.getItem('konekta_theme') !== 'light';
-    setIsDarkMode(isDark);
-  }, []);
+  const [isDarkMode, setIsDarkMode] = useState(getInitialTheme);
 
   const toggleTheme = () => {
     const newMode = !isDarkMode;
     setIsDarkMode(newMode);
-    localStorage.setItem('konekta_theme', newMode ? 'dark' : 'light');
+    localStorage.setItem("konekta_theme", newMode ? "dark" : "light");
   };
 
   return (

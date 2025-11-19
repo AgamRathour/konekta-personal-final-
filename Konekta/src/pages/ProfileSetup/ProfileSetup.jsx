@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "../../context/ThemeContext";
+import { useTheme } from "../../context/useTheme";
 import * as authService from "../../services/authService";
 
 const ProfileSetup = () => {
@@ -70,8 +70,8 @@ const ProfileSetup = () => {
         throw new Error("User not found. Please log in again.");
       }
 
-      // Call backend to update profile and mark as not new user
-      await authService.updateUser(currentUser.email, {
+      // Update stored user profile locally
+      const { user } = await authService.updateUser({
         username: username.trim(),
         fullName: fullName.trim(),
         bio: bio.trim(),
@@ -80,25 +80,18 @@ const ProfileSetup = () => {
       });
 
       // Save profile to localStorage
+      const refreshedUser =
+        user || JSON.parse(localStorage.getItem("konekta_user"));
+
       const userProfile = {
-        username: username.trim(),
-        fullName: fullName.trim(),
-        bio: bio.trim(),
-        profileImage: profileImage || null,
+        username: refreshedUser?.username || username.trim(),
+        fullName: refreshedUser?.fullName || fullName.trim(),
+        bio: refreshedUser?.bio || bio.trim(),
+        profileImage: refreshedUser?.profilePic || profileImage || null,
         completedAt: new Date().toISOString(),
       };
 
-      // Update localStorage with complete user data
-      const updatedUser = {
-        ...currentUser,
-        username: username.trim(),
-        fullName: fullName.trim(),
-        bio: bio.trim(),
-        profilePic: profileImage || null,
-        isNewUser: false,
-      };
-
-      localStorage.setItem("konekta_user", JSON.stringify(updatedUser));
+      localStorage.setItem("konekta_user", JSON.stringify(refreshedUser));
       localStorage.setItem("konekta_user_profile", JSON.stringify(userProfile));
       localStorage.setItem("konekta_profile_setup_done", "true");
 
@@ -126,7 +119,7 @@ const ProfileSetup = () => {
       const defaultUsername = `user_${Date.now()}`;
 
       // Call backend to update with default profile and mark as not new user
-      await authService.updateUser(currentUser.email, {
+      const { user } = await authService.updateUser({
         username: defaultUsername,
         fullName: currentUser.firstName || "User",
         bio: "",
@@ -142,15 +135,10 @@ const ProfileSetup = () => {
       };
 
       // Update localStorage
-      const updatedUser = {
-        ...currentUser,
-        username: defaultUsername,
-        fullName: currentUser.firstName || "User",
-        bio: "",
-        isNewUser: false,
-      };
+      const refreshedUser =
+        user || JSON.parse(localStorage.getItem("konekta_user"));
 
-      localStorage.setItem("konekta_user", JSON.stringify(updatedUser));
+      localStorage.setItem("konekta_user", JSON.stringify(refreshedUser));
       localStorage.setItem(
         "konekta_user_profile",
         JSON.stringify(defaultProfile)

@@ -1,10 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import * as authService from "../../services/authService";
 
 const ChangePassword = () => {
   const navigate = useNavigate();
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const getInitialTheme = () =>
+    (typeof window !== "undefined" &&
+      localStorage.getItem("konekta_theme") !== "light") ||
+    false;
+
+  const [isDarkMode, setIsDarkMode] = useState(getInitialTheme);
+  const storedUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("konekta_user")) || null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const [formData, setFormData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -13,7 +26,6 @@ const ChangePassword = () => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [user, setUser] = useState(null);
   const [showPasswords, setShowPasswords] = useState({
     currentPassword: false,
     newPassword: false,
@@ -21,17 +33,10 @@ const ChangePassword = () => {
   });
 
   useEffect(() => {
-    const isDark = localStorage.getItem("konekta_theme") !== "light";
-    setIsDarkMode(isDark);
-
-    // Get current user
-    const currentUser = JSON.parse(localStorage.getItem("konekta_user"));
-    if (!currentUser) {
+    if (!storedUser) {
       navigate("/login");
-    } else {
-      setUser(currentUser);
     }
-  }, [navigate]);
+  }, [storedUser, navigate]);
 
   const toggleTheme = () => {
     const newMode = !isDarkMode;
@@ -60,8 +65,8 @@ const ChangePassword = () => {
 
     if (!formData.newPassword.trim())
       newErrors.newPassword = "New password is required";
-    else if (formData.newPassword.length < 6)
-      newErrors.newPassword = "Password must be at least 6 characters";
+    else if (formData.newPassword.length < 8)
+      newErrors.newPassword = "Password must be at least 8 characters";
 
     if (!formData.confirmPassword.trim())
       newErrors.confirmPassword = "Please confirm your password";
@@ -82,16 +87,20 @@ const ChangePassword = () => {
 
     try {
       // Call backend to set new password
-      console.log("Setting password for:", user.email);
-      const response = await authService.setPassword(user.email, formData.newPassword);
-      
-      console.log("Password set response:", response);
+      const response = await authService.setPassword(
+        storedUser.email,
+        formData.newPassword
+      );
 
       setMessage("✅ Password changed successfully!");
       setFormData({ currentPassword: "", newPassword: "", confirmPassword: "" });
 
       // Update user in localStorage to set isPasswordSet to true
-      const updatedUser = { ...user, isPasswordSet: true };
+      const updatedUser = {
+        ...storedUser,
+        ...(response.user || {}),
+        isPasswordSet: true,
+      };
       localStorage.setItem("konekta_user", JSON.stringify(updatedUser));
 
       setTimeout(() => {
@@ -109,7 +118,7 @@ const ChangePassword = () => {
     }
   };
 
-  if (!user) return null;
+  if (!storedUser) return null;
 
   return (
     <div

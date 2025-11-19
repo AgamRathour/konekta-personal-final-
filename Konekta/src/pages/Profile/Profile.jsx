@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useTheme } from "../../context/ThemeContext";
+import { Link, useNavigate } from "react-router-dom";
+import { useTheme } from "../../context/useTheme";
+import * as authService from "../../services/authService";
+import "./Profile.css";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -87,41 +89,50 @@ const Profile = () => {
   };
 
   // Save profile changes
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!validateEditForm()) return;
 
     setLoading(true);
 
-    const currentUser = JSON.parse(localStorage.getItem("konekta_user"));
+    try {
+      const { user } = await authService.updateUser({
+        username: editFormData.username?.trim(),
+        fullName: editFormData.fullName?.trim(),
+        bio: editFormData.bio?.trim(),
+        profilePic: editFormData.profileImage || profile.profileImage,
+      });
 
-    const updatedProfile = {
-      ...profile,
-      username: editFormData.username?.trim(),
-      fullName: editFormData.fullName?.trim(),
-      bio: editFormData.bio?.trim(),
-      profileImage: editFormData.profileImage || profile.profileImage,
-    };
+      const refreshedUser =
+        user || JSON.parse(localStorage.getItem("konekta_user"));
 
-    // Update the current user in localStorage
-    const updatedUser = {
-      ...currentUser,
-      username: editFormData.username?.trim(),
-      fullName: editFormData.fullName?.trim(),
-      bio: editFormData.bio?.trim(),
-      profilePic: editFormData.profileImage || profile.profileImage,
-    };
-    
-    localStorage.setItem("konekta_user", JSON.stringify(updatedUser));
-    
-    // Also save profile with email-based key for isolation
-    localStorage.setItem(
-      `konekta_user_profile_${currentUser.email}`,
-      JSON.stringify(updatedProfile)
-    );
-    
-    setProfile(updatedProfile);
-    setShowEditModal(false);
-    setLoading(false);
+      const updatedProfile = {
+        ...profile,
+        username: refreshedUser?.username || editFormData.username?.trim(),
+        fullName: refreshedUser?.fullName || editFormData.fullName?.trim(),
+        bio: refreshedUser?.bio ?? editFormData.bio?.trim(),
+        profileImage:
+          refreshedUser?.profilePic ||
+          refreshedUser?.profileImage ||
+          editFormData.profileImage ||
+          profile.profileImage,
+      };
+
+      const currentUserEmail = refreshedUser?.email || profile.email;
+      if (currentUserEmail) {
+        localStorage.setItem(
+          `konekta_user_profile_${currentUserEmail}`,
+          JSON.stringify(updatedProfile)
+        );
+      }
+
+      setProfile(updatedProfile);
+      setEditFormData(updatedProfile);
+      setShowEditModal(false);
+    } catch (error) {
+      console.error("Save profile error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle post image upload
@@ -178,19 +189,189 @@ const Profile = () => {
     setPosts(updatedPosts);
   };
 
-  if (!profile) {
-    return (
-      <div
-        className={`min-h-screen flex items-center justify-center ${
-          isDarkMode ? "bg-black text-white" : "bg-gray-50 text-gray-900"
-        }`}
-      >
-        <p>Loading profile...</p>
-      </div>
-    );
-  }
+  const sidebarNavItems = [
+    {
+      label: "Home",
+      to: "/",
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M3 12l9-9 9 9v9a3 3 0 01-3 3H6a3 3 0 01-3-3z"
+          />
+        </svg>
+      ),
+    },
+    {
+      label: "Search",
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <line
+            x1="21"
+            y1="21"
+            x2="16.65"
+            y2="16.65"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+    },
+    {
+      label: "Explore",
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <polygon points="12 2 19 21 12 17 5 21 12 2" />
+        </svg>
+      ),
+    },
+    {
+      label: "Reels",
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <rect x="2" y="4" width="20" height="16" rx="4" />
+          <polygon points="10 10 16 14 10 18 10 10" fill="white" />
+        </svg>
+      ),
+    },
+    {
+      label: "Messages",
+      to: "/messenger",
+      badge: "8",
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path d="M21 15V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z" />
+          <polyline points="3 8 12 13 21 8" />
+        </svg>
+      ),
+    },
+    {
+      label: "Notifications",
+      to: "/notifications",
+      active: true,
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+      ),
+    },
+    {
+      label: "Create",
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <rect x="4" y="4" width="16" height="16" rx="2" />
+          <line x1="12" y1="8" x2="12" y2="16" />
+          <line x1="8" y1="12" x2="16" y2="12" />
+        </svg>
+      ),
+    },
+  ];
 
-  return (
+  const renderSidebarLink = (item, index) => {
+    const content = (
+      <>
+        {item.icon}
+        <span>
+          {item.label}
+          {item.badge && (
+            <span className="sidebar-badge">{item.badge}</span>
+          )}
+        </span>
+      </>
+    );
+
+    if (item.to) {
+      return (
+        <Link
+          key={`${item.label}-${index}`}
+          to={item.to}
+          className={`sidebar-link ${item.active ? "active" : ""}`}
+        >
+          {content}
+        </Link>
+      );
+    }
+
+    return (
+      <button
+        key={`${item.label}-${index}`}
+        type="button"
+        className="sidebar-link"
+      >
+        {content}
+      </button>
+    );
+  };
+
+  const sidebar = (
+    <aside className="profile-sidebar">
+      <Link to="/profile" className="sidebar-avatar-link">
+        <img
+          src="https://randomuser.me/api/portraits/women/44.jpg"
+          alt="Profile avatar"
+          className="sidebar-avatar"
+        />
+      </Link>
+      <nav className="sidebar-nav">{sidebarNavItems.map(renderSidebarLink)}</nav>
+    </aside>
+  );
+
+  const loadingView = (
+    <div
+      className={`min-h-screen flex items-center justify-center ${
+        isDarkMode ? "bg-black text-white" : "bg-gray-50 text-gray-900"
+      }`}
+    >
+      <p>Loading profile...</p>
+    </div>
+  );
+
+  const profileView = (
     <div
       className={`min-h-screen transition-colors duration-500 ${
         isDarkMode ? "bg-black text-white" : "bg-gray-50 text-gray-900"
@@ -684,6 +865,19 @@ const Profile = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+
+  const mainContent = profile ? profileView : loadingView;
+
+  return (
+    <div
+      className={`profile-layout ${
+        isDarkMode ? "theme-dark" : "theme-light"
+      }`}
+    >
+      {sidebar}
+      <div className="profile-main-wrapper">{mainContent}</div>
     </div>
   );
 };
